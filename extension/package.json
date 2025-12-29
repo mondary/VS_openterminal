@@ -2,11 +2,19 @@
   "name": "open-terminal-editor-tab",
   "displayName": "Open Terminal in Editor Tab",
   "description": "Adds an editor toolbar button to open a terminal in a new editor tab.",
-  "version": "0.0.1",
+  "version": "0.0.8",
   "publisher": "local",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other"],
-  "activationEvents": ["onCommand:openTerminalEditor.openInEditorTab"],
+  "activationEvents": [
+    "onCommand:openTerminalEditor.openInEditorTab",
+    "onCommand:openTerminalEditor.openCodex",
+    "onCommand:openTerminalEditor.openGemini",
+    "onCommand:openTerminalEditor.openOpenCode",
+    "onCommand:openTerminalEditor.openOpenSpec",
+    "onCommand:openTerminalEditor.openQwen",
+    "onCommand:openTerminalEditor.openClaude"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -14,14 +22,74 @@
         "command": "openTerminalEditor.openInEditorTab",
         "title": "Open Terminal in New Editor Tab",
         "icon": "$(terminal)"
+      },
+      {
+        "command": "openTerminalEditor.openCodex",
+        "title": "Open Codex Terminal in New Editor Tab",
+        "icon": "resources/codex.svg"
+      },
+      {
+        "command": "openTerminalEditor.openGemini",
+        "title": "Open Gemini Terminal in New Editor Tab",
+        "icon": "resources/gemini.svg"
+      },
+      {
+        "command": "openTerminalEditor.openOpenCode",
+        "title": "Open OpenCode Terminal in New Editor Tab",
+        "icon": "resources/opencode.svg"
+      },
+      {
+        "command": "openTerminalEditor.openOpenSpec",
+        "title": "Open OpenSpec Terminal in New Editor Tab",
+        "icon": "resources/openspec.svg"
+      },
+      {
+        "command": "openTerminalEditor.openQwen",
+        "title": "Open Qwen Terminal in New Editor Tab",
+        "icon": "resources/qwen.svg"
+      },
+      {
+        "command": "openTerminalEditor.openClaude",
+        "title": "Open Claude Terminal in New Editor Tab",
+        "icon": "resources/claude.svg"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "openTerminalEditor.openInEditorTab",
+          "command": "openTerminalEditor.openCodex",
+          "when": "true",
+          "group": "navigation@-6"
+        },
+        {
+          "command": "openTerminalEditor.openGemini",
+          "when": "true",
+          "group": "navigation@-5"
+        },
+        {
+          "command": "openTerminalEditor.openOpenCode",
+          "when": "true",
+          "group": "navigation@-4"
+        },
+        {
+          "command": "openTerminalEditor.openOpenSpec",
+          "when": "true",
+          "group": "navigation@-3"
+        },
+        {
+          "command": "openTerminalEditor.openQwen",
+          "when": "true",
+          "group": "navigation@-2"
+        },
+        {
+          "command": "openTerminalEditor.openClaude",
           "when": "true",
           "group": "navigation@-1"
+        },
+        {
+          "command": "openTerminalEditor.openInEditorTab",
+          "when": "true",
+          "group": "navigation@0"
         }
       ]
     }
