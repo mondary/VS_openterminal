@@ -2,7 +2,7 @@
   "name": "open-terminal-editor-tab",
   "displayName": "Open Terminal in Editor Tab",
   "description": "Adds an editor toolbar button to open a terminal in a new editor tab.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "local",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other"],
@@ -14,14 +14,14 @@
     "onCommand:openTerminalEditor.openOpenSpec",
     "onCommand:openTerminalEditor.openQwen",
     "onCommand:openTerminalEditor.openClaude",
-    "onView:openTerminalEditor.llmPanel"
+    "onView:openTerminalEditor.llmPanelView"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "openTerminalEditor.llmContainer",
+          "id": "openTerminalEditor.llmActivity",
           "title": "LLMs",
           "icon": {
             "light": "resources/llm-light.svg",
@@ -31,9 +31,9 @@
       ]
     },
     "views": {
-      "openTerminalEditor.llmContainer": [
+      "openTerminalEditor.llmActivity": [
         {
-          "id": "openTerminalEditor.llmPanel",
+          "id": "openTerminalEditor.llmPanelView",
           "name": "LLM Launcher",
           "type": "webview"
         }

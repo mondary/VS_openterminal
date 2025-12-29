@@ -24,7 +24,7 @@ VSIX output is written to `release/`.
 Use a single-line command (no line breaks):
 
 ```bash
-"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "/Users/clm/Documents/GitHub/EXTENSIONS/VS_openterminal/release/open-terminal-editor-tab-0.1.0.vsix"
+"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "/Users/clm/Documents/GitHub/EXTENSIONS/VS_openterminal/release/open-terminal-editor-tab-0.1.1.vsix"
 ```
 
 ## Commands Used (Build + Package + Install)
@@ -34,7 +34,7 @@ cd extension
 npm install
 npm run build
 npm run release
-"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "/Users/clm/Documents/GitHub/EXTENSIONS/VS_openterminal/release/open-terminal-editor-tab-0.1.0.vsix"
+"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "/Users/clm/Documents/GitHub/EXTENSIONS/VS_openterminal/release/open-terminal-editor-tab-0.1.1.vsix"
 ```
 
 ## Reload Window

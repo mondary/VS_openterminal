@@ -368,7 +368,7 @@ export function activate(context: vscode.ExtensionContext) {
   const llmPanelProvider = new LlmPanelProvider(context.extensionUri);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
-      "openTerminalEditor.llmPanel",
+      "openTerminalEditor.llmPanelView",
       llmPanelProvider
     )
   );
