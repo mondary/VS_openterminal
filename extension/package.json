@@ -1,0 +1,40 @@
+{
+  "name": "open-terminal-editor-tab",
+  "displayName": "Open Terminal in Editor Tab",
+  "description": "Adds an editor toolbar button to open a terminal in a new editor tab.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:openTerminalEditor.openInEditorTab"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "openTerminalEditor.openInEditorTab",
+        "title": "Open Terminal in New Editor Tab",
+        "icon": "$(terminal)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "openTerminalEditor.openInEditorTab",
+          "when": "true",
+          "group": "navigation@-1"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "package": "mkdir -p ../release && vsce package -o ../release/${npm_package_name}-${npm_package_version}.vsix",
+    "release": "npm run build && npm run package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.5.4"
+  }
+}
