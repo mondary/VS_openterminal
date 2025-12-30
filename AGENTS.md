@@ -20,3 +20,4 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 # Project Notes
 
 - Document changes in `README.md` when updating extension behavior or build/install steps.
+- Keep README up to date with UI/UX changes (LLM launcher, splits, icons).

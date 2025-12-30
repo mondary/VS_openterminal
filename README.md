@@ -48,11 +48,19 @@ npm run release
 - Click any install command to open a new terminal tab with the command pre-filled.
 - Settings: search for `openTerminalEditor.show*` in Settings to show/hide each LLM button.
 
+## Terminal Split Actions
+
+- Right-click a terminal editor tab or terminal editor area to split left/right/up/down.
+- Splits create a new editor group and automatically open a new terminal tab.
+
+## LLM Launcher Logos
+
+- If logos do not appear, ensure the extension version is `0.1.5` and reload the window.
+
 ## Usage
 
 - In the editor title bar, click any of the AI buttons (Codex, Gemini, OpenCode, OpenSpec, Qwen, Claude) to open a new editor-area terminal running the matching command, with the matching icon on the terminal tab.
 - Use the terminal icon to open a plain terminal in a new editor tab.
-- Right-click a terminal editor tab or terminal editor area to split left/right/up/down.
 - Commands are named:
   - "Open Codex Terminal in New Editor Tab"
   - "Open Gemini Terminal in New Editor Tab"
