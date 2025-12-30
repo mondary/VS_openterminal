@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
+const node_child_process_1 = require("node:child_process");
+const node_util_1 = require("node:util");
 const COMMAND_ID = "openTerminalEditor.openInEditorTab";
 const CODEX_COMMAND_ID = "openTerminalEditor.openCodex";
 const GEMINI_COMMAND_ID = "openTerminalEditor.openGemini";
@@ -14,6 +16,15 @@ const SPLIT_LEFT_COMMAND_ID = "openTerminalEditor.splitLeft";
 const SPLIT_RIGHT_COMMAND_ID = "openTerminalEditor.splitRight";
 const SPLIT_UP_COMMAND_ID = "openTerminalEditor.splitUp";
 const SPLIT_DOWN_COMMAND_ID = "openTerminalEditor.splitDown";
+const FALLBACK_EMOJI = "";
+const USAGE_KEYS = [
+    "codex",
+    "gemini",
+    "openCode",
+    "openSpec",
+    "qwen",
+    "claude",
+];
 const VISIBILITY_KEYS = {
     codex: "openTerminalEditor.showCodex",
     gemini: "openTerminalEditor.showGemini",
@@ -22,6 +33,21 @@ const VISIBILITY_KEYS = {
     qwen: "openTerminalEditor.showQwen",
     claude: "openTerminalEditor.showClaude",
 };
+const PROVIDER_LABELS = {
+    codex: "Codex",
+    gemini: "Gemini",
+    openCode: "OpenCode",
+    openSpec: "OpenSpec",
+    qwen: "Qwen",
+    claude: "Claude",
+};
+const CLI_PROVIDER_MAP = {
+    codex: "codex",
+    claude: "claude",
+    gemini: "gemini",
+};
+const execFileAsync = (0, node_util_1.promisify)(node_child_process_1.execFile);
+const CODEX_USAGE_URL = "https://chatgpt.com/codex/settings/usage";
 function isEditorLocation(location) {
     if (location === vscode.TerminalLocation.Editor) {
         return true;
@@ -71,10 +97,160 @@ async function updateVisibilityContexts() {
     const state = getVisibilityState();
     await Promise.all(Object.keys(VISIBILITY_KEYS).map((key) => vscode.commands.executeCommand("setContext", VISIBILITY_KEYS[key], state[key])));
 }
+function createEmptyUsageSnapshot() {
+    return {
+        codex: {},
+        gemini: {},
+        openCode: {},
+        openSpec: {},
+        qwen: {},
+        claude: {},
+    };
+}
+function formatUsage(state) {
+    if (!state || state.remainingPercent === undefined) {
+        return FALLBACK_EMOJI;
+    }
+    const clamped = Math.max(0, Math.min(100, state.remainingPercent));
+    return `${Math.round(clamped)}%`;
+}
+function formatTerminalName(name, state) {
+    const usage = formatUsage(state);
+    return usage ? `${name} ${usage}` : name;
+}
+function extractJsonArray(output) {
+    const start = output.indexOf("[");
+    const end = output.lastIndexOf("]");
+    if (start === -1 || end === -1 || end <= start) {
+        return null;
+    }
+    return output.slice(start, end + 1);
+}
+async function fetchUsageFromCodexBar(binaryPath) {
+    try {
+        const { stdout } = await execFileAsync(binaryPath, ["usage", "--format", "json", "--provider", "all"], {
+            timeout: 15000,
+            maxBuffer: 5 * 1024 * 1024,
+            encoding: "utf8",
+        });
+        if (!stdout) {
+            return {};
+        }
+        const json = extractJsonArray(stdout);
+        if (!json) {
+            return {};
+        }
+        const payload = JSON.parse(json);
+        const next = {};
+        const now = new Date();
+        for (const item of payload) {
+            if (!item.provider) {
+                continue;
+            }
+            const key = CLI_PROVIDER_MAP[item.provider];
+            if (!key) {
+                continue;
+            }
+            const used = item.usage?.primary?.usedPercent;
+            if (typeof used !== "number") {
+                next[key] = { updatedAt: now, source: item.source };
+                continue;
+            }
+            next[key] = {
+                remainingPercent: Math.max(0, 100 - used),
+                updatedAt: now,
+                source: item.source,
+            };
+        }
+        return next;
+    }
+    catch {
+        return {};
+    }
+}
+class UsageService {
+    constructor() {
+        this.snapshot = createEmptyUsageSnapshot();
+        this.emitter = new vscode.EventEmitter();
+        this.onDidUpdate = this.emitter.event;
+    }
+    async refresh() {
+        const config = vscode.workspace.getConfiguration("openTerminalEditor");
+        const binary = config.get("codexbarPath", "codexbar");
+        const partial = await fetchUsageFromCodexBar(binary);
+        this.snapshot = { ...createEmptyUsageSnapshot(), ...partial };
+        this.emitter.fire(this.snapshot);
+    }
+    start() {
+        void this.refresh();
+        const config = vscode.workspace.getConfiguration("openTerminalEditor");
+        const minutes = Math.max(1, config.get("usageRefreshMinutes", 5));
+        this.timer = setInterval(() => void this.refresh(), minutes * 60000);
+    }
+    restart() {
+        this.stop();
+        this.start();
+    }
+    stop() {
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = undefined;
+        }
+    }
+    getSnapshot() {
+        return this.snapshot;
+    }
+}
+class UsageViewProvider {
+    constructor(iconMap, usageService) {
+        this.iconMap = iconMap;
+        this.usageService = usageService;
+        this.emitter = new vscode.EventEmitter();
+        this.onDidChangeTreeData = this.emitter.event;
+    }
+    refresh() {
+        this.emitter.fire();
+    }
+    getChildren() {
+        const snapshot = this.usageService.getSnapshot();
+        return USAGE_KEYS.map((key) => {
+            const item = new vscode.TreeItem(PROVIDER_LABELS[key]);
+            item.description = formatUsage(snapshot[key]);
+            item.iconPath = this.iconMap[key];
+            return item;
+        });
+    }
+    getTreeItem(element) {
+        return element;
+    }
+}
+function getCustomLaunchers() {
+    const config = vscode.workspace.getConfiguration("openTerminalEditor");
+    const entries = config.get("customLaunchers", []);
+    return Array.isArray(entries) ? entries : [];
+}
+async function saveCustomLaunchers(entries) {
+    const config = vscode.workspace.getConfiguration("openTerminalEditor");
+    await config.update("customLaunchers", entries, vscode.ConfigurationTarget.Global);
+}
+function resolveCustomIcon(icon) {
+    const trimmed = icon.trim();
+    if (!trimmed) {
+        return null;
+    }
+    if (trimmed.startsWith("$(") && trimmed.endsWith(")")) {
+        return { type: "codicon", value: trimmed.slice(2, -1) };
+    }
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        return { type: "url", value: trimmed };
+    }
+    return null;
+}
 class LlmPanelProvider {
     constructor(extensionUri, iconMap) {
         this.extensionUri = extensionUri;
         this.iconMap = iconMap;
+        this.usage = createEmptyUsageSnapshot();
     }
     resolveWebviewView(view) {
         this.view = view;
@@ -99,9 +275,50 @@ class LlmPanelProvider {
                 typeof message.command === "string" &&
                 typeof message.name === "string") {
                 const icon = message.key ? this.iconMap[message.key] : undefined;
-                createEditorTerminal(message.command, message.name, icon);
+                const usage = message.key && message.key in this.usage
+                    ? this.usage[message.key]
+                    : undefined;
+                createEditorTerminal(message.command, formatTerminalName(message.name, usage), icon);
+                return;
+            }
+            if (message?.type === "runCustom") {
+                const icon = resolveCustomIcon(message.icon ?? "");
+                const iconPath = icon?.type === "url"
+                    ? vscode.Uri.parse(icon.value)
+                    : icon?.type === "codicon"
+                        ? new vscode.ThemeIcon(icon.value)
+                        : undefined;
+                createEditorTerminal(message.command, message.name, iconPath);
+                return;
+            }
+            if (message?.type === "saveCustom") {
+                const current = getCustomLaunchers();
+                const id = message.id ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                const entry = {
+                    id,
+                    name: String(message.name ?? "").trim(),
+                    command: String(message.command ?? "").trim(),
+                    icon: String(message.icon ?? "").trim(),
+                };
+                if (!entry.name || !entry.command) {
+                    return;
+                }
+                const next = current.filter((item) => item.id !== id).concat(entry);
+                await saveCustomLaunchers(next);
+                this.render();
+                return;
+            }
+            if (message?.type === "deleteCustom" && typeof message.id === "string") {
+                const current = getCustomLaunchers();
+                const next = current.filter((item) => item.id !== message.id);
+                await saveCustomLaunchers(next);
+                this.render();
             }
         });
+        this.render();
+    }
+    updateUsage(snapshot) {
+        this.usage = snapshot;
         this.render();
     }
     render() {
@@ -185,9 +402,11 @@ class LlmPanelProvider {
                 icon: "claude.svg",
             },
         ];
+        const customLaunchers = getCustomLaunchers();
         const entryHtml = entries
             .map((entry) => {
             const iconUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "resources", entry.icon));
+            const usageText = formatUsage(this.usage[entry.key]);
             const installs = entry.installs
                 .map((install) => {
                 const escaped = escapeHtml(install);
@@ -212,6 +431,7 @@ class LlmPanelProvider {
             <div class="title">
               <img class="logo" src="${iconUri}" alt="${entry.name} logo" />
               <div class="name">${entry.name}</div>
+              <div class="usage">${usageText}</div>
             </div>
             <label class="toggle">
               <input type="checkbox" data-key="${entry.key}" ${state[entry.key] ? "checked" : ""} />
@@ -227,11 +447,39 @@ class LlmPanelProvider {
       `;
         })
             .join("");
+        const customHtml = customLaunchers
+            .map((entry) => {
+            const icon = resolveCustomIcon(entry.icon);
+            const iconTag = icon?.type === "url"
+                ? `<img class="logo" src="${escapeAttribute(icon.value)}" alt="${escapeHtml(entry.name)} logo" />`
+                : icon?.type === "codicon"
+                    ? `<span class="codicon">$(${escapeHtml(icon.value)})</span>`
+                    : `<span class="codicon">$(terminal)</span>`;
+            return `
+        <section class="card custom">
+          <div class="header">
+            <div class="title">
+              ${iconTag}
+              <div class="name">${escapeHtml(entry.name)}</div>
+            </div>
+            <button class="link-button" data-custom-run="true" data-name="${escapeAttribute(entry.name)}" data-command="${escapeAttribute(entry.command)}" data-icon="${escapeAttribute(entry.icon)}" type="button">Run</button>
+            <button class="danger-button" data-custom-delete="true" data-id="${escapeAttribute(entry.id)}" type="button">Delete</button>
+          </div>
+          <div class="installs">
+            <div class="command">
+              <span class="cmd">${escapeHtml(entry.command)}</span>
+              <span class="run">Terminal</span>
+            </div>
+          </div>
+        </section>
+      `;
+        })
+            .join("");
         return `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https:; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
       :root {
@@ -280,6 +528,14 @@ class LlmPanelProvider {
         font-size: 13px;
         font-weight: 600;
         letter-spacing: 0.01em;
+      }
+      .usage {
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: var(--chip-bg);
+        border: 1px solid var(--vscode-panel-border);
+        color: var(--vscode-descriptionForeground);
       }
       .toggle {
         display: inline-flex;
@@ -363,13 +619,107 @@ class LlmPanelProvider {
         color: var(--vscode-textLink-foreground);
         text-decoration: none;
       }
+      .codicon {
+        font-family: var(--vscode-icon-font-family);
+        font-size: 18px;
+        line-height: 1;
+        color: var(--vscode-foreground);
+      }
+      .custom-form {
+        border: 1px dashed var(--vscode-panel-border);
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 12px;
+      }
+      .custom-form label {
+        display: grid;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        margin-bottom: 8px;
+      }
+      .custom-form input {
+        background: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border: 1px solid var(--vscode-input-border);
+        border-radius: 6px;
+        padding: 6px 8px;
+      }
+      .custom-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .primary-button {
+        background: var(--accent);
+        color: var(--vscode-button-foreground);
+        border: none;
+        border-radius: 6px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .secondary-button {
+        background: transparent;
+        border: 1px solid var(--vscode-panel-border);
+        color: inherit;
+        border-radius: 6px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .danger-button {
+        background: transparent;
+        border: 1px solid color-mix(in srgb, #ff5a5a 70%, #fff 30%);
+        color: #ff6b6b;
+        border-radius: 6px;
+        padding: 2px 8px;
+        cursor: pointer;
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
     <h1>LLM Launcher</h1>
+    <section class="custom-form">
+      <label>
+        Name
+        <input id="custom-name" type="text" placeholder="My LLM" />
+      </label>
+      <label>
+        Command
+        <input id="custom-command" type="text" placeholder="my-llm --help" />
+      </label>
+      <label>
+        Icon URL or codicon (e.g. $(rocket))
+        <input id="custom-icon" type="text" placeholder="https://... or $(rocket)" />
+      </label>
+      <div class="custom-actions">
+        <button class="primary-button" id="custom-save" type="button">Save</button>
+        <button class="secondary-button" id="custom-clear" type="button">Clear</button>
+      </div>
+    </section>
     ${entryHtml}
+    ${customHtml}
     <script nonce="${nonce}">
       const vscode = acquireVsCodeApi();
+      const nameInput = document.getElementById('custom-name');
+      const commandInput = document.getElementById('custom-command');
+      const iconInput = document.getElementById('custom-icon');
+      const saveButton = document.getElementById('custom-save');
+      const clearButton = document.getElementById('custom-clear');
+      saveButton.addEventListener('click', () => {
+        vscode.postMessage({
+          type: 'saveCustom',
+          name: nameInput.value,
+          command: commandInput.value,
+          icon: iconInput.value,
+        });
+      });
+      clearButton.addEventListener('click', () => {
+        nameInput.value = '';
+        commandInput.value = '';
+        iconInput.value = '';
+      });
       document.querySelectorAll('input[data-key]').forEach((input) => {
         input.addEventListener('change', (event) => {
           vscode.postMessage({
@@ -397,6 +747,24 @@ class LlmPanelProvider {
               name: list.dataset.name,
               command: button.dataset.command,
             });
+          });
+        });
+      });
+      document.querySelectorAll('[data-custom-run]').forEach((button) => {
+        button.addEventListener('click', () => {
+          vscode.postMessage({
+            type: 'runCustom',
+            name: button.dataset.name,
+            command: button.dataset.command,
+            icon: button.dataset.icon,
+          });
+        });
+      });
+      document.querySelectorAll('[data-custom-delete]').forEach((button) => {
+        button.addEventListener('click', () => {
+          vscode.postMessage({
+            type: 'deleteCustom',
+            id: button.dataset.id,
           });
         });
       });
@@ -443,7 +811,17 @@ function activate(context) {
         qwen: qwenIcon,
         claude: claudeIcon,
     });
+    const usageService = new UsageService();
+    const usageViewProvider = new UsageViewProvider({
+        codex: codexIcon,
+        gemini: geminiIcon,
+        openCode: openCodeIcon,
+        openSpec: openSpecIcon,
+        qwen: qwenIcon,
+        claude: claudeIcon,
+    }, usageService);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider("openTerminalEditor.llmPanelView", llmPanelProvider));
+    context.subscriptions.push(vscode.window.registerTreeDataProvider("openTerminalEditor.usageView", usageViewProvider));
     const openTerminal = vscode.commands.registerCommand(COMMAND_ID, async () => {
         try {
             createEditorTerminal(undefined, "Terminal");
@@ -455,7 +833,7 @@ function activate(context) {
     });
     const openCodex = vscode.commands.registerCommand(CODEX_COMMAND_ID, async () => {
         try {
-            createEditorTerminal("codex", "Codex", codexIcon);
+            createEditorTerminal("codex", formatTerminalName("Codex", usageService.getSnapshot().codex), codexIcon);
         }
         catch (error) {
             console.error("Failed to open Codex terminal", error);
@@ -464,7 +842,7 @@ function activate(context) {
     });
     const openGemini = vscode.commands.registerCommand(GEMINI_COMMAND_ID, async () => {
         try {
-            createEditorTerminal("gemini", "Gemini", geminiIcon);
+            createEditorTerminal("gemini", formatTerminalName("Gemini", usageService.getSnapshot().gemini), geminiIcon);
         }
         catch (error) {
             console.error("Failed to open Gemini terminal", error);
@@ -473,7 +851,7 @@ function activate(context) {
     });
     const openOpenCode = vscode.commands.registerCommand(OPENCODE_COMMAND_ID, async () => {
         try {
-            createEditorTerminal("opencode", "OpenCode", openCodeIcon);
+            createEditorTerminal("opencode", formatTerminalName("OpenCode", usageService.getSnapshot().openCode), openCodeIcon);
         }
         catch (error) {
             console.error("Failed to open OpenCode terminal", error);
@@ -482,7 +860,7 @@ function activate(context) {
     });
     const openOpenSpec = vscode.commands.registerCommand(OPENSPEC_COMMAND_ID, async () => {
         try {
-            createEditorTerminal("openspec init", "OpenSpec", openSpecIcon);
+            createEditorTerminal("openspec init", formatTerminalName("OpenSpec", usageService.getSnapshot().openSpec), openSpecIcon);
         }
         catch (error) {
             console.error("Failed to open OpenSpec terminal", error);
@@ -491,7 +869,7 @@ function activate(context) {
     });
     const openQwen = vscode.commands.registerCommand(QWEN_COMMAND_ID, async () => {
         try {
-            createEditorTerminal("qwen", "Qwen", qwenIcon);
+            createEditorTerminal("qwen", formatTerminalName("Qwen", usageService.getSnapshot().qwen), qwenIcon);
         }
         catch (error) {
             console.error("Failed to open Qwen terminal", error);
@@ -500,7 +878,7 @@ function activate(context) {
     });
     const openClaude = vscode.commands.registerCommand(CLAUDE_COMMAND_ID, async () => {
         try {
-            createEditorTerminal("claude", "Claude", claudeIcon);
+            createEditorTerminal("claude", formatTerminalName("Claude", usageService.getSnapshot().claude), claudeIcon);
         }
         catch (error) {
             console.error("Failed to open Claude terminal", error);
@@ -525,6 +903,7 @@ function activate(context) {
         if (event.affectsConfiguration("openTerminalEditor")) {
             updateVisibilityContexts();
             llmPanelProvider.render();
+            usageService.restart();
         }
     }));
     updateVisibilityContexts();
@@ -532,6 +911,12 @@ function activate(context) {
     context.subscriptions.push(vscode.window.onDidChangeActiveTerminal(() => {
         updateTerminalEditorContext();
     }));
+    usageService.onDidUpdate((snapshot) => {
+        llmPanelProvider.updateUsage(snapshot);
+        usageViewProvider.refresh();
+    });
+    usageService.start();
+    context.subscriptions.push({ dispose: () => usageService.stop() });
 }
 function deactivate() { }
 //# sourceMappingURL=extension.js.map
