@@ -7,6 +7,10 @@ const OPENCODE_COMMAND_ID = "openTerminalEditor.openOpenCode";
 const OPENSPEC_COMMAND_ID = "openTerminalEditor.openOpenSpec";
 const QWEN_COMMAND_ID = "openTerminalEditor.openQwen";
 const CLAUDE_COMMAND_ID = "openTerminalEditor.openClaude";
+const SPLIT_LEFT_COMMAND_ID = "openTerminalEditor.splitLeft";
+const SPLIT_RIGHT_COMMAND_ID = "openTerminalEditor.splitRight";
+const SPLIT_UP_COMMAND_ID = "openTerminalEditor.splitUp";
+const SPLIT_DOWN_COMMAND_ID = "openTerminalEditor.splitDown";
 
 const VISIBILITY_KEYS = {
   codex: "openTerminalEditor.showCodex",
@@ -18,6 +22,41 @@ const VISIBILITY_KEYS = {
 } as const;
 
 type VisibilityState = Record<keyof typeof VISIBILITY_KEYS, boolean>;
+
+function isEditorLocation(
+  location:
+    | vscode.TerminalLocation
+    | vscode.TerminalEditorLocationOptions
+    | vscode.TerminalSplitLocationOptions
+    | undefined
+): boolean {
+  if (location === vscode.TerminalLocation.Editor) {
+    return true;
+  }
+  if (!location || typeof location !== "object") {
+    return false;
+  }
+  if ("viewColumn" in location) {
+    return true;
+  }
+  if ("parentTerminal" in location) {
+    const parentLocation = location.parentTerminal.creationOptions.location;
+    return isEditorLocation(parentLocation);
+  }
+  return false;
+}
+
+async function updateTerminalEditorContext() {
+  const activeTerminal = vscode.window.activeTerminal;
+  const isEditorTerminal = activeTerminal
+    ? isEditorLocation(activeTerminal.creationOptions.location)
+    : false;
+  await vscode.commands.executeCommand(
+    "setContext",
+    "openTerminalEditor.terminalEditorActive",
+    isEditorTerminal
+  );
+}
 
 function createEditorTerminal(
   command?: string,
@@ -64,7 +103,10 @@ async function updateVisibilityContexts() {
 class LlmPanelProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly iconMap: Record<string, vscode.Uri>
+  ) {}
 
   resolveWebviewView(view: vscode.WebviewView) {
     this.view = view;
@@ -89,6 +131,16 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
 
       if (message?.type === "openLink" && typeof message.url === "string") {
         await vscode.env.openExternal(vscode.Uri.parse(message.url));
+        return;
+      }
+
+      if (
+        message?.type === "runCommand" &&
+        typeof message.command === "string" &&
+        typeof message.name === "string"
+      ) {
+        const icon = message.key ? this.iconMap[message.key] : undefined;
+        createEditorTerminal(message.command, message.name, icon);
       }
     });
 
@@ -111,6 +163,7 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
       name: string;
       url: string;
       installs: string[];
+      icon: string;
       notes?: Note[];
     };
 
@@ -120,6 +173,7 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
         name: "Codex",
         url: "https://developers.openai.com/codex/cli/",
         installs: ["npm i -g @openai/codex", "brew install codex"],
+        icon: "codex.svg",
       },
       {
         key: "gemini",
@@ -129,6 +183,7 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
           "npm install -g @google/gemini-cli",
           "brew install gemini-cli",
         ],
+        icon: "gemini.svg",
       },
       {
         key: "openCode",
@@ -140,6 +195,7 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
           "brew install opencode",
           "bun add -g opencode-ai",
         ],
+        icon: "opencode.svg",
         notes: [
           {
             label: "oh-my-opencode",
@@ -158,6 +214,7 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
         name: "OpenSpec",
         url: "https://github.com/Fission-AI/OpenSpec",
         installs: ["npm install -g @fission-ai/openspec@latest"],
+        icon: "openspec.svg",
       },
       {
         key: "qwen",
@@ -168,6 +225,7 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
           "npm install -g @qwen-code/qwen-code@latest",
           "brew install qwen-code",
         ],
+        icon: "qwen.svg",
         notes: [{ text: "Requires Node.js 20+" }],
       },
       {
@@ -178,11 +236,15 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
           "curl -fsSL https://claude.ai/install.sh | bash",
           "npm install -g @anthropic-ai/claude-code",
         ],
+        icon: "claude.svg",
       },
     ];
 
     const entryHtml = entries
       .map((entry) => {
+        const iconUri = webview.asWebviewUri(
+          vscode.Uri.joinPath(this.extensionUri, "resources", entry.icon)
+        );
         const installs = entry.installs
           .map((install) => `<code>${escapeHtml(install)}</code>`)
           .join("");
@@ -192,7 +254,7 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
                 if (note.url) {
                   const label = note.label ?? note.text ?? "";
                   const text = note.text ?? "";
-                  return `<a href="#" data-url="${note.url}">${escapeHtml(
+                  return `<a class="note-link" href="#" data-url="${note.url}">${escapeHtml(
                     label
                   )}</a><span>${escapeHtml(text)}</span>`;
                 }
@@ -203,15 +265,20 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
         return `
         <section class="card">
           <div class="header">
-            <label>
+            <label class="toggle">
+              <img class="logo" src="${iconUri}" alt="${entry.name} logo" />
               <input type="checkbox" data-key="${entry.key}" ${
           state[entry.key as keyof VisibilityState] ? "checked" : ""
         } />
               <span>${entry.name}</span>
             </label>
-            <a href="#" data-url="${entry.url}">Install</a>
+            <button class="link-button" data-url="${entry.url}" type="button">
+              Website
+            </button>
           </div>
-          <div class="installs">${installs}</div>
+          <div class="installs" data-key="${entry.key}" data-name="${
+          entry.name
+        }">${installs}</div>
           ${notes ? `<div class="notes">${notes}</div>` : ""}
         </section>
       `;
@@ -222,7 +289,7 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
       body {
@@ -255,9 +322,20 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
         align-items: center;
         gap: 8px;
       }
-      .header a {
+      .logo {
+        width: 18px;
+        height: 18px;
+      }
+      .toggle input {
+        margin: 0;
+      }
+      .link-button {
         color: var(--vscode-textLink-foreground);
-        text-decoration: none;
+        background: transparent;
+        border: 1px solid var(--vscode-textLink-foreground);
+        border-radius: 6px;
+        padding: 2px 8px;
+        cursor: pointer;
         font-size: 12px;
       }
       .installs {
@@ -271,6 +349,7 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
         border-radius: 6px;
         font-size: 11px;
         overflow-x: auto;
+        cursor: pointer;
       }
       .notes {
         display: grid;
@@ -299,12 +378,24 @@ class LlmPanelProvider implements vscode.WebviewViewProvider {
           });
         });
       });
-      document.querySelectorAll('a[data-url]').forEach((link) => {
+      document.querySelectorAll('[data-url]').forEach((link) => {
         link.addEventListener('click', (event) => {
           event.preventDefault();
           vscode.postMessage({
             type: 'openLink',
             url: event.target.dataset.url,
+          });
+        });
+      });
+      document.querySelectorAll('.installs').forEach((list) => {
+        list.querySelectorAll('code').forEach((code) => {
+          code.addEventListener('click', () => {
+            vscode.postMessage({
+              type: 'runCommand',
+              key: list.dataset.key,
+              name: list.dataset.name,
+              command: code.innerText,
+            });
           });
         });
       });
@@ -331,6 +422,11 @@ function getNonce(): string {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
   return text;
+}
+
+async function splitEditorAndOpenTerminal(command: string) {
+  await vscode.commands.executeCommand(command);
+  await vscode.commands.executeCommand("workbench.action.createTerminalEditor");
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -365,7 +461,14 @@ export function activate(context: vscode.ExtensionContext) {
     "claude.svg"
   );
 
-  const llmPanelProvider = new LlmPanelProvider(context.extensionUri);
+  const llmPanelProvider = new LlmPanelProvider(context.extensionUri, {
+    codex: codexIcon,
+    gemini: geminiIcon,
+    openCode: openCodeIcon,
+    openSpec: openSpecIcon,
+    qwen: qwenIcon,
+    claude: claudeIcon,
+  });
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       "openTerminalEditor.llmPanelView",
@@ -468,6 +571,33 @@ export function activate(context: vscode.ExtensionContext) {
     openClaude
   );
 
+  const splitLeft = vscode.commands.registerCommand(
+    SPLIT_LEFT_COMMAND_ID,
+    async () => {
+      await splitEditorAndOpenTerminal("workbench.action.splitEditorLeft");
+    }
+  );
+  const splitRight = vscode.commands.registerCommand(
+    SPLIT_RIGHT_COMMAND_ID,
+    async () => {
+      await splitEditorAndOpenTerminal("workbench.action.splitEditorRight");
+    }
+  );
+  const splitUp = vscode.commands.registerCommand(
+    SPLIT_UP_COMMAND_ID,
+    async () => {
+      await splitEditorAndOpenTerminal("workbench.action.splitEditorUp");
+    }
+  );
+  const splitDown = vscode.commands.registerCommand(
+    SPLIT_DOWN_COMMAND_ID,
+    async () => {
+      await splitEditorAndOpenTerminal("workbench.action.splitEditorDown");
+    }
+  );
+
+  context.subscriptions.push(splitLeft, splitRight, splitUp, splitDown);
+
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("openTerminalEditor")) {
@@ -478,6 +608,13 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   updateVisibilityContexts();
+  updateTerminalEditorContext();
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTerminal(() => {
+      updateTerminalEditorContext();
+    })
+  );
 }
 
 export function deactivate() {}

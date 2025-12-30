@@ -2,7 +2,7 @@
   "name": "open-terminal-editor-tab",
   "displayName": "Open Terminal in Editor Tab",
   "description": "Adds an editor toolbar button to open a terminal in a new editor tab.",
-  "version": "0.1.1",
+  "version": "0.1.5",
   "publisher": "local",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other"],
@@ -14,6 +14,10 @@
     "onCommand:openTerminalEditor.openOpenSpec",
     "onCommand:openTerminalEditor.openQwen",
     "onCommand:openTerminalEditor.openClaude",
+    "onCommand:openTerminalEditor.splitLeft",
+    "onCommand:openTerminalEditor.splitRight",
+    "onCommand:openTerminalEditor.splitUp",
+    "onCommand:openTerminalEditor.splitDown",
     "onView:openTerminalEditor.llmPanelView"
   ],
   "main": "./dist/extension.js",
@@ -74,9 +78,69 @@
         "command": "openTerminalEditor.openClaude",
         "title": "Open Claude Terminal in New Editor Tab",
         "icon": "resources/claude.svg"
+      },
+      {
+        "command": "openTerminalEditor.splitLeft",
+        "title": "Split Terminal Left"
+      },
+      {
+        "command": "openTerminalEditor.splitRight",
+        "title": "Split Terminal Right"
+      },
+      {
+        "command": "openTerminalEditor.splitUp",
+        "title": "Split Terminal Up"
+      },
+      {
+        "command": "openTerminalEditor.splitDown",
+        "title": "Split Terminal Down"
       }
     ],
     "menus": {
+      "terminal/context": [
+        {
+          "command": "openTerminalEditor.splitLeft",
+          "when": "openTerminalEditor.terminalEditorActive == true",
+          "group": "navigation@90"
+        },
+        {
+          "command": "openTerminalEditor.splitRight",
+          "when": "openTerminalEditor.terminalEditorActive == true",
+          "group": "navigation@91"
+        },
+        {
+          "command": "openTerminalEditor.splitUp",
+          "when": "openTerminalEditor.terminalEditorActive == true",
+          "group": "navigation@92"
+        },
+        {
+          "command": "openTerminalEditor.splitDown",
+          "when": "openTerminalEditor.terminalEditorActive == true",
+          "group": "navigation@93"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "openTerminalEditor.splitLeft",
+          "when": "openTerminalEditor.terminalEditorActive == true",
+          "group": "navigation@90"
+        },
+        {
+          "command": "openTerminalEditor.splitRight",
+          "when": "openTerminalEditor.terminalEditorActive == true",
+          "group": "navigation@91"
+        },
+        {
+          "command": "openTerminalEditor.splitUp",
+          "when": "openTerminalEditor.terminalEditorActive == true",
+          "group": "navigation@92"
+        },
+        {
+          "command": "openTerminalEditor.splitDown",
+          "when": "openTerminalEditor.terminalEditorActive == true",
+          "group": "navigation@93"
+        }
+      ],
       "editor/title": [
         {
           "command": "openTerminalEditor.openCodex",

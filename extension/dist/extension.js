@@ -10,6 +10,10 @@ const OPENCODE_COMMAND_ID = "openTerminalEditor.openOpenCode";
 const OPENSPEC_COMMAND_ID = "openTerminalEditor.openOpenSpec";
 const QWEN_COMMAND_ID = "openTerminalEditor.openQwen";
 const CLAUDE_COMMAND_ID = "openTerminalEditor.openClaude";
+const SPLIT_LEFT_COMMAND_ID = "openTerminalEditor.splitLeft";
+const SPLIT_RIGHT_COMMAND_ID = "openTerminalEditor.splitRight";
+const SPLIT_UP_COMMAND_ID = "openTerminalEditor.splitUp";
+const SPLIT_DOWN_COMMAND_ID = "openTerminalEditor.splitDown";
 const VISIBILITY_KEYS = {
     codex: "openTerminalEditor.showCodex",
     gemini: "openTerminalEditor.showGemini",
@@ -18,6 +22,29 @@ const VISIBILITY_KEYS = {
     qwen: "openTerminalEditor.showQwen",
     claude: "openTerminalEditor.showClaude",
 };
+function isEditorLocation(location) {
+    if (location === vscode.TerminalLocation.Editor) {
+        return true;
+    }
+    if (!location || typeof location !== "object") {
+        return false;
+    }
+    if ("viewColumn" in location) {
+        return true;
+    }
+    if ("parentTerminal" in location) {
+        const parentLocation = location.parentTerminal.creationOptions.location;
+        return isEditorLocation(parentLocation);
+    }
+    return false;
+}
+async function updateTerminalEditorContext() {
+    const activeTerminal = vscode.window.activeTerminal;
+    const isEditorTerminal = activeTerminal
+        ? isEditorLocation(activeTerminal.creationOptions.location)
+        : false;
+    await vscode.commands.executeCommand("setContext", "openTerminalEditor.terminalEditorActive", isEditorTerminal);
+}
 function createEditorTerminal(command, name, iconPath) {
     const terminal = vscode.window.createTerminal({
         name,
@@ -45,8 +72,9 @@ async function updateVisibilityContexts() {
     await Promise.all(Object.keys(VISIBILITY_KEYS).map((key) => vscode.commands.executeCommand("setContext", VISIBILITY_KEYS[key], state[key])));
 }
 class LlmPanelProvider {
-    constructor(extensionUri) {
+    constructor(extensionUri, iconMap) {
         this.extensionUri = extensionUri;
+        this.iconMap = iconMap;
     }
     resolveWebviewView(view) {
         this.view = view;
@@ -65,6 +93,13 @@ class LlmPanelProvider {
             }
             if (message?.type === "openLink" && typeof message.url === "string") {
                 await vscode.env.openExternal(vscode.Uri.parse(message.url));
+                return;
+            }
+            if (message?.type === "runCommand" &&
+                typeof message.command === "string" &&
+                typeof message.name === "string") {
+                const icon = message.key ? this.iconMap[message.key] : undefined;
+                createEditorTerminal(message.command, message.name, icon);
             }
         });
         this.render();
@@ -84,6 +119,7 @@ class LlmPanelProvider {
                 name: "Codex",
                 url: "https://developers.openai.com/codex/cli/",
                 installs: ["npm i -g @openai/codex", "brew install codex"],
+                icon: "codex.svg",
             },
             {
                 key: "gemini",
@@ -93,6 +129,7 @@ class LlmPanelProvider {
                     "npm install -g @google/gemini-cli",
                     "brew install gemini-cli",
                 ],
+                icon: "gemini.svg",
             },
             {
                 key: "openCode",
@@ -104,6 +141,7 @@ class LlmPanelProvider {
                     "brew install opencode",
                     "bun add -g opencode-ai",
                 ],
+                icon: "opencode.svg",
                 notes: [
                     {
                         label: "oh-my-opencode",
@@ -122,6 +160,7 @@ class LlmPanelProvider {
                 name: "OpenSpec",
                 url: "https://github.com/Fission-AI/OpenSpec",
                 installs: ["npm install -g @fission-ai/openspec@latest"],
+                icon: "openspec.svg",
             },
             {
                 key: "qwen",
@@ -132,6 +171,7 @@ class LlmPanelProvider {
                     "npm install -g @qwen-code/qwen-code@latest",
                     "brew install qwen-code",
                 ],
+                icon: "qwen.svg",
                 notes: [{ text: "Requires Node.js 20+" }],
             },
             {
@@ -142,10 +182,12 @@ class LlmPanelProvider {
                     "curl -fsSL https://claude.ai/install.sh | bash",
                     "npm install -g @anthropic-ai/claude-code",
                 ],
+                icon: "claude.svg",
             },
         ];
         const entryHtml = entries
             .map((entry) => {
+            const iconUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "resources", entry.icon));
             const installs = entry.installs
                 .map((install) => `<code>${escapeHtml(install)}</code>`)
                 .join("");
@@ -155,7 +197,7 @@ class LlmPanelProvider {
                     if (note.url) {
                         const label = note.label ?? note.text ?? "";
                         const text = note.text ?? "";
-                        return `<a href="#" data-url="${note.url}">${escapeHtml(label)}</a><span>${escapeHtml(text)}</span>`;
+                        return `<a class="note-link" href="#" data-url="${note.url}">${escapeHtml(label)}</a><span>${escapeHtml(text)}</span>`;
                     }
                     return `<span>${escapeHtml(note.text ?? "")}</span>`;
                 })
@@ -164,13 +206,16 @@ class LlmPanelProvider {
             return `
         <section class="card">
           <div class="header">
-            <label>
+            <label class="toggle">
+              <img class="logo" src="${iconUri}" alt="${entry.name} logo" />
               <input type="checkbox" data-key="${entry.key}" ${state[entry.key] ? "checked" : ""} />
               <span>${entry.name}</span>
             </label>
-            <a href="#" data-url="${entry.url}">Install</a>
+            <button class="link-button" data-url="${entry.url}" type="button">
+              Website
+            </button>
           </div>
-          <div class="installs">${installs}</div>
+          <div class="installs" data-key="${entry.key}" data-name="${entry.name}">${installs}</div>
           ${notes ? `<div class="notes">${notes}</div>` : ""}
         </section>
       `;
@@ -213,9 +258,20 @@ class LlmPanelProvider {
         align-items: center;
         gap: 8px;
       }
-      .header a {
+      .logo {
+        width: 18px;
+        height: 18px;
+      }
+      .toggle input {
+        margin: 0;
+      }
+      .link-button {
         color: var(--vscode-textLink-foreground);
-        text-decoration: none;
+        background: transparent;
+        border: 1px solid var(--vscode-textLink-foreground);
+        border-radius: 6px;
+        padding: 2px 8px;
+        cursor: pointer;
         font-size: 12px;
       }
       .installs {
@@ -229,6 +285,7 @@ class LlmPanelProvider {
         border-radius: 6px;
         font-size: 11px;
         overflow-x: auto;
+        cursor: pointer;
       }
       .notes {
         display: grid;
@@ -257,12 +314,24 @@ class LlmPanelProvider {
           });
         });
       });
-      document.querySelectorAll('a[data-url]').forEach((link) => {
+      document.querySelectorAll('[data-url]').forEach((link) => {
         link.addEventListener('click', (event) => {
           event.preventDefault();
           vscode.postMessage({
             type: 'openLink',
             url: event.target.dataset.url,
+          });
+        });
+      });
+      document.querySelectorAll('.installs').forEach((list) => {
+        list.querySelectorAll('code').forEach((code) => {
+          code.addEventListener('click', () => {
+            vscode.postMessage({
+              type: 'runCommand',
+              key: list.dataset.key,
+              name: list.dataset.name,
+              command: code.innerText,
+            });
           });
         });
       });
@@ -287,6 +356,10 @@ function getNonce() {
     }
     return text;
 }
+async function splitEditorAndOpenTerminal(command) {
+    await vscode.commands.executeCommand(command);
+    await vscode.commands.executeCommand("workbench.action.createTerminalEditor");
+}
 function activate(context) {
     const codexIcon = vscode.Uri.joinPath(context.extensionUri, "resources", "codex.svg");
     const geminiIcon = vscode.Uri.joinPath(context.extensionUri, "resources", "gemini.svg");
@@ -294,8 +367,15 @@ function activate(context) {
     const openSpecIcon = vscode.Uri.joinPath(context.extensionUri, "resources", "openspec.svg");
     const qwenIcon = vscode.Uri.joinPath(context.extensionUri, "resources", "qwen.svg");
     const claudeIcon = vscode.Uri.joinPath(context.extensionUri, "resources", "claude.svg");
-    const llmPanelProvider = new LlmPanelProvider(context.extensionUri);
-    context.subscriptions.push(vscode.window.registerWebviewViewProvider("openTerminalEditor.llmPanel", llmPanelProvider));
+    const llmPanelProvider = new LlmPanelProvider(context.extensionUri, {
+        codex: codexIcon,
+        gemini: geminiIcon,
+        openCode: openCodeIcon,
+        openSpec: openSpecIcon,
+        qwen: qwenIcon,
+        claude: claudeIcon,
+    });
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider("openTerminalEditor.llmPanelView", llmPanelProvider));
     const openTerminal = vscode.commands.registerCommand(COMMAND_ID, async () => {
         try {
             createEditorTerminal(undefined, "Terminal");
@@ -360,6 +440,19 @@ function activate(context) {
         }
     });
     context.subscriptions.push(openTerminal, openCodex, openGemini, openOpenCode, openOpenSpec, openQwen, openClaude);
+    const splitLeft = vscode.commands.registerCommand(SPLIT_LEFT_COMMAND_ID, async () => {
+        await splitEditorAndOpenTerminal("workbench.action.splitEditorLeft");
+    });
+    const splitRight = vscode.commands.registerCommand(SPLIT_RIGHT_COMMAND_ID, async () => {
+        await splitEditorAndOpenTerminal("workbench.action.splitEditorRight");
+    });
+    const splitUp = vscode.commands.registerCommand(SPLIT_UP_COMMAND_ID, async () => {
+        await splitEditorAndOpenTerminal("workbench.action.splitEditorUp");
+    });
+    const splitDown = vscode.commands.registerCommand(SPLIT_DOWN_COMMAND_ID, async () => {
+        await splitEditorAndOpenTerminal("workbench.action.splitEditorDown");
+    });
+    context.subscriptions.push(splitLeft, splitRight, splitUp, splitDown);
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration("openTerminalEditor")) {
             updateVisibilityContexts();
@@ -367,6 +460,10 @@ function activate(context) {
         }
     }));
     updateVisibilityContexts();
+    updateTerminalEditorContext();
+    context.subscriptions.push(vscode.window.onDidChangeActiveTerminal(() => {
+        updateTerminalEditorContext();
+    }));
 }
 function deactivate() { }
 //# sourceMappingURL=extension.js.map

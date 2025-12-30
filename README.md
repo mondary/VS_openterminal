@@ -24,7 +24,7 @@ VSIX output is written to `release/`.
 Use a single-line command (no line breaks):
 
 ```bash
-"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "/Users/clm/Documents/GitHub/EXTENSIONS/VS_openterminal/release/open-terminal-editor-tab-0.1.1.vsix"
+"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "/Users/clm/Documents/GitHub/EXTENSIONS/VS_openterminal/release/open-terminal-editor-tab-0.1.5.vsix"
 ```
 
 ## Commands Used (Build + Package + Install)
@@ -34,7 +34,7 @@ cd extension
 npm install
 npm run build
 npm run release
-"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "/Users/clm/Documents/GitHub/EXTENSIONS/VS_openterminal/release/open-terminal-editor-tab-0.1.1.vsix"
+"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "/Users/clm/Documents/GitHub/EXTENSIONS/VS_openterminal/release/open-terminal-editor-tab-0.1.5.vsix"
 ```
 
 ## Reload Window
@@ -44,13 +44,15 @@ npm run release
 
 ## Sidebar Panel and Settings
 
-- Open the **LLMs** view in the Activity Bar to toggle each button and see install links.
+- Open the **LLMs** view in the Activity Bar to toggle each button, see logos, and open install links.
+- Click any install command to open a new terminal tab with the command pre-filled.
 - Settings: search for `openTerminalEditor.show*` in Settings to show/hide each LLM button.
 
 ## Usage
 
 - In the editor title bar, click any of the AI buttons (Codex, Gemini, OpenCode, OpenSpec, Qwen, Claude) to open a new editor-area terminal running the matching command, with the matching icon on the terminal tab.
 - Use the terminal icon to open a plain terminal in a new editor tab.
+- Right-click a terminal editor tab or terminal editor area to split left/right/up/down.
 - Commands are named:
   - "Open Codex Terminal in New Editor Tab"
   - "Open Gemini Terminal in New Editor Tab"
