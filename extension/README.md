@@ -1,6 +1,6 @@
 # VS_pkterminal
 
-![Extension icon](extension/icon.png)
+![Extension icon](icon.png)
 
 **VS_pkterminal** - Adds editor title-bar buttons to open new terminals in the editor area (not the bottom panel) with LLM integration.
 
