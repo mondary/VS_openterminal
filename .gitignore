@@ -24,3 +24,6 @@ openspec/
 
 # Misc
 *.log
+.DS_Store
+Icon
+Icon\?
