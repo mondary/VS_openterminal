@@ -50,7 +50,7 @@ The .vsix is generated in `release/`.
 ### VS Code (CLI)
 
 ```bash
-code --install-extension "./release/VS_pkterminal-1.0.17.vsix"
+code --install-extension "./release/VS_pkterminal-1.0.18.vsix"
 ```
 
 ### Cursor (UI)
@@ -67,7 +67,7 @@ Open the extensions store → drag & drop the `.vsix`.
 
 ## 🧾 Changelog
 
-- 1.0.17: status bar button active on startup, README and description refresh.
+- 1.0.18: shared README (store = root README).
 
 ## 🔗 Links
 

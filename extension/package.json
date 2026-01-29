@@ -2,7 +2,7 @@
   "name": "vs-pkterminal",
   "displayName": "VS_pkterminal",
   "description": "Open terminals in editor tabs with LLM launchers, a status bar shortcut, and split actions.",
-   "version": "1.0.17",
+   "version": "1.0.18",
   "publisher": "Cmondary",
   "license": "MIT",
   "icon": "icon.png",
