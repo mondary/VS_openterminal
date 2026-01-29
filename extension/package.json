@@ -1,8 +1,8 @@
 {
   "name": "vs-pkterminal",
   "displayName": "VS_pkterminal",
-  "description": "Adds editor title-bar buttons to open terminals in new editor tabs with LLM integration.",
-   "version": "1.0.16",
+  "description": "Open terminals in editor tabs with LLM launchers, a status bar shortcut, and split actions.",
+   "version": "1.0.17",
   "publisher": "Cmondary",
   "license": "MIT",
   "icon": "icon.png",
@@ -14,6 +14,7 @@
   "categories": ["Other"],
   "keywords": ["terminal", "llm", "ai", "editor", "tab", "split", "codex", "claude", "gemini", "opencode"],
   "activationEvents": [
+    "onStartupFinished",
     "onCommand:openTerminalEditor.openInEditorTab",
     "onCommand:openTerminalEditor.openCodex",
     "onCommand:openTerminalEditor.openGemini",
@@ -21,6 +22,7 @@
     "onCommand:openTerminalEditor.openOpenSpec",
     "onCommand:openTerminalEditor.openQwen",
     "onCommand:openTerminalEditor.openClaude",
+    "onCommand:openTerminalEditor.statusBarButton",
     "onCommand:openTerminalEditor.splitLeft",
     "onCommand:openTerminalEditor.splitRight",
     "onCommand:openTerminalEditor.splitUp",

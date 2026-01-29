@@ -2,7 +2,7 @@
 
 ![Extension icon](icon.png)
 
-**VS_pkterminal** - Adds editor title-bar buttons to open new terminals in the editor area (not the bottom panel) with LLM integration.
+**VS_pkterminal** - Open terminals in editor tabs with LLM launchers, a status bar shortcut, and split actions.
 
 ## Build
 
@@ -26,7 +26,7 @@ VSIX output is written to `release/`.
 Use a single-line command (no line breaks):
 
 ```bash
-"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "./release/VS_pkterminal-1.0.0.vsix"
+"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "./release/VS_pkterminal-1.0.17.vsix"
 ```
 
 ## Commands Used (Build + Package + Install)
@@ -36,7 +36,7 @@ cd extension
 npm install
 npm run build
 npm run release
-"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "./release/VS_pkterminal-1.0.0.vsix"
+"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "./release/VS_pkterminal-1.0.17.vsix"
 ```
 
 ## Reload Window
@@ -53,14 +53,15 @@ npm run release
 - Custom launchers: add name, command, and icon (URL or codicon) and use Save/Delete.
 - Settings: `openTerminalEditor.customLaunchers` stores custom entries.
 
+## Status Bar Button
+
+- A **Terminal** button appears in the VS Code status bar after startup.
+- Clicking it opens a new terminal in the editor area.
+
 ## Terminal Split Actions
 
 - Right-click a terminal editor tab or terminal editor area to split left/right/up/down.
 - Splits create a new editor group and automatically open a new terminal tab.
-
-## LLM Launcher Logos
-
-- If logos do not appear, ensure the extension version is `0.1.5` and reload the window.
 
 ## Usage
 

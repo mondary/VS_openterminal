@@ -10,7 +10,7 @@
 
 - 🧭 Title bar buttons to open a terminal as a **new editor tab**.
 - 🤖 LLM launchers (Codex, Gemini, OpenCode, OpenSpec, Qwen, Claude) with dedicated icons.
-- 🧰 Classic Terminal button for a neutral terminal.
+- 🧰 Classic Terminal button in the **status bar** for a neutral terminal.
 - 🎛️ **LLMs** panel with logos, toggles, and clickable install commands.
 - 🧩 Custom launchers (name, command, icon URL/codicon).
 - 🪟 Split left/right/up/down via right‑click in the terminal editor.
@@ -18,7 +18,7 @@
 ## 🧠 Usage
 
 - Click an LLM button → new editor terminal with the matching command.
-- Click the terminal button → new standard terminal.
+- Click the terminal button (status bar) → new standard terminal.
 - OpenSpec runs `openspec init` when clicked.
 
 ## ⚙️ Settings
@@ -45,15 +45,29 @@ npm run release
 
 The .vsix is generated in `release/`.
 
-## 🧪 Install (Antigravity)
+## 🧪 Install (VSIX)
+
+### VS Code (CLI)
 
 ```bash
-"/Applications/Vibe/vibe Antigravity.app/Contents/Resources/app/bin/antigravity" --install-extension "./release/VS_pkterminal-1.0.15.vsix"
+code --install-extension "./release/VS_pkterminal-1.0.17.vsix"
 ```
+
+### Cursor (UI)
+
+Command Palette → “Extensions: Install from VSIX…” → select the `.vsix`.
+
+### Antigravity (UI)
+
+Command Palette → “Extensions: Install from VSIX…” → select the `.vsix`.
+
+### Trae (UI)
+
+Open the extensions store → drag & drop the `.vsix`.
 
 ## 🧾 Changelog
 
-- 1.0.15: README refresh, release packaging updates.
+- 1.0.17: status bar button active on startup, README and description refresh.
 
 ## 🔗 Links
 
