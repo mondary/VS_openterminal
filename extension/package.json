@@ -2,12 +2,13 @@
   "name": "vs-pkterminal",
   "displayName": "VS_pkterminal",
   "description": "Adds editor title-bar buttons to open terminals in new editor tabs with LLM integration.",
-   "version": "1.0.13",
+   "version": "1.0.15",
   "publisher": "Cmondary",
+  "license": "MIT",
   "icon": "icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_USERNAME/VS_pkterminal"
+    "url": "https://github.com/mondary/VS_pkterminal"
   },
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other"],
