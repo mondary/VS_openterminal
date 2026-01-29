@@ -2,6 +2,9 @@
 
 ![Project icon](icon.png)
 
+🇬🇧 EN — README_en.md  
+🇫🇷 FR — README.md
+
 ✨ A simple and efficient VS Code extension to open terminals **inside the editor** (not the bottom panel), with ready-to-use LLM buttons.
 
 ## ✅ Features
@@ -58,4 +61,3 @@ The .vsix is generated in `release/`.
 - VS Code Marketplace: https://marketplace.visualstudio.com/publishers/Cmondary
 - Open VSX: https://open-vsx.org/namespace/Cmondary
 - GitHub: https://github.com/mondary?tab=repositories&q=vs_
-- FR README: README.md

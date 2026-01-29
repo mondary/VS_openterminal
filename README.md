@@ -2,6 +2,9 @@
 
 ![Project icon](icon.png)
 
+🇫🇷 FR — README.md  
+🇬🇧 EN — README_en.md
+
 ✨ Extension VS Code simple et efficace pour ouvrir des terminaux **dans l’éditeur** (pas en bas), avec des boutons LLM prêts à l’emploi.
 
 ## ✅ Fonctionnalités
@@ -58,4 +61,3 @@ Le .vsix est généré dans `release/`.
 - VS Code Marketplace : https://marketplace.visualstudio.com/publishers/Cmondary
 - Open VSX : https://open-vsx.org/namespace/Cmondary
 - GitHub : https://github.com/mondary?tab=repositories&q=vs_
-- EN README : README_en.md
