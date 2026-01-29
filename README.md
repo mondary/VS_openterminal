@@ -2,8 +2,7 @@
 
 ![Project icon](icon.png)
 
-🇫🇷 FR — [README.md](README.md)  
-🇬🇧 EN — [README_en.md](README_en.md)
+[🇫🇷 FR](README.md) · [🇬🇧 EN](README_en.md)
 
 ✨ Extension VS Code simple et efficace pour ouvrir des terminaux **dans l’éditeur** (pas en bas), avec des boutons LLM prêts à l’emploi.
 

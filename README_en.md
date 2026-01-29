@@ -2,8 +2,7 @@
 
 ![Project icon](icon.png)
 
-🇬🇧 EN — [README_en.md](README_en.md)  
-🇫🇷 FR — [README.md](README.md)
+[🇬🇧 EN](README_en.md) · [🇫🇷 FR](README.md)
 
 ✨ A simple and efficient VS Code extension to open terminals **inside the editor** (not the bottom panel), with ready-to-use LLM buttons.
 
